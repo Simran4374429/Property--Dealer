@@ -8,27 +8,24 @@ import faiss
 
 client = InferenceClient("HuggingFaceH4/zephyr-7b-beta")
 
-# Placeholder for the app's state
 class MyApp:
-    def __init__(self) -> None:
+    def __init__(self) -> None:  # Updated this line
         self.documents = []
         self.embeddings = None
         self.index = None
-        self.load_pdf("THEDIA1.pdf")
+        self.load_pdf("Dealer.pdf")
         self.build_vector_db()
 
     def load_pdf(self, file_path: str) -> None:
-        """Extracts text from a PDF file and stores it in the app's documents."""
         doc = fitz.open(file_path)
         self.documents = []
         for page_num in range(len(doc)):
             page = doc[page_num]
             text = page.get_text()
             self.documents.append({"page": page_num + 1, "content": text})
-        print("PDF processed successfully!")
+        print("Property listings processed successfully!")
 
     def build_vector_db(self) -> None:
-        """Builds a vector database using the content of the PDF."""
         model = SentenceTransformer('all-MiniLM-L6-v2')
         self.embeddings = model.encode([doc["content"] for doc in self.documents])
         self.index = faiss.IndexFlatL2(self.embeddings.shape[1])
@@ -36,12 +33,11 @@ class MyApp:
         print("Vector database built successfully!")
 
     def search_documents(self, query: str, k: int = 3) -> List[str]:
-        """Searches for relevant documents using vector similarity."""
         model = SentenceTransformer('all-MiniLM-L6-v2')
         query_embedding = model.encode([query])
         D, I = self.index.search(np.array(query_embedding), k)
         results = [self.documents[i]["content"] for i in I[0]]
-        return results if results else ["No relevant documents found."]
+        return results if results else ["No relevant properties found."]
 
 app = MyApp()
 
@@ -53,7 +49,7 @@ def respond(
     temperature: float,
     top_p: float,
 ):
-    system_message = "You are a knowledgeable DBT coach. You always talk about one options at at a time. you add greetings and you ask questions like real counsellor. Remember you are helpful and a good listener. You are concise and never ask multiple questions, or give long response. You response like a human counsellor accurately and correctly. consider the users as your client. and practice verbal cues only where needed. Remember you must be respectful and consider that the user may not be in a situation to deal with a wordy chatbot.  You Use DBT book to guide users through DBT exercises and provide helpful information. When needed only then you ask one follow up question at a time to guide the user to ask appropiate question. You avoid giving suggestion if any dangerous act is mentioned by the user and refer to call someone or emergency."
+    system_message = "Welcome to Property Dealer Assistant! I'm here to help you find the perfect property. Whether you're looking for a new home, an investment property, or a commercial space, I'm here to assist. Let's find your dream property together!"
     messages = [{"role": "system", "content": system_message}]
 
     for val in history:
@@ -64,10 +60,9 @@ def respond(
 
     messages.append({"role": "user", "content": message})
 
-    # RAG - Retrieve relevant documents
     retrieved_docs = app.search_documents(message)
     context = "\n".join(retrieved_docs)
-    messages.append({"role": "system", "content": "Relevant documents: " + context})
+    messages.append({"role": "system", "content": "Relevant properties: " + context})
 
     response = ""
     for message in client.chat_completion(
@@ -84,23 +79,21 @@ def respond(
 demo = gr.Blocks()
 
 with demo:
+    gr.Markdown("🏠 Property Dealer Assistant")
     gr.Markdown(
-        "‼️Disclaimer: This chatbot is based on a DBT exercise book that is publicly available. and just to test RAG implementation.‼️"
+        "📝 This chatbot is designed to assist with property dealing and real estate queries. "
+        "Please note that we are not professional property dealers, and the use of this chatbot is at your own responsibility."
     )
-    
     chatbot = gr.ChatInterface(
         respond,
         examples=[
-            ["I feel overwhelmed with work."],
-            ["Can you guide me through a quick meditation?"],
-            ["How do I stop worrying about things I can't control?"],
-            ["What are some DBT skills for managing anxiety?"],
-            ["Can you explain mindfulness in DBT?"],
-            ["I am interested in DBT excercises"],
-            ["I feel restless. Please help me."],
-            ["I have destructive thoughts coming to my mind repetatively."]
+            ["I'm looking for a new home in New York."],
+            ["Can you suggest a good commercial space in Los Angeles?"],
+            ["How do I find a good investment property?"],
+            ["What is the real estate market like in San Francisco?"],
+            ["Can you help me understand the mortgage process?"]
         ],
-        title='Dialectical Behaviour Therapy Assistant👩‍⚕️🧘‍♀️'
+        title='Property Dealer Assistant🏠'
     )
 
 if __name__ == "__main__":
